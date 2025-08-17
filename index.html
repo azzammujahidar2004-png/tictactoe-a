@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tic Tac Toe - 3 Bidak</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #111;
+      color: white;
+    }
+
+    h1 {
+      margin-top: 20px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 120px);
+      grid-template-rows: repeat(3, 120px);
+      gap: 5px;
+      margin: 30px auto;
+      width: max-content;
+      position: relative;
+    }
+
+    .cell {
+      width: 120px;
+      height: 120px;
+      font-size: 60px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #222;
+      border: 2px solid #555;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s ease-in-out;
+      color: white;
+    }
+
+    .cell:hover {
+      transform: scale(1.05);
+    }
+
+    .mark {
+      animation: popIn 0.3s ease-in-out;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    #status {
+      font-size: 20px;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      background: #333;
+      color: white;
+    }
+
+    button:hover {
+      background: #444;
+    }
+
+    /* Garis kemenangan */
+    .win-line {
+      position: absolute;
+      height: 6px;
+      width: 0;
+      transform-origin: left center;
+      background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
+      background-size: 400%;
+      border-radius: 5px;
+      animation: drawLine 0.8s forwards, glow 2s infinite linear;
+    }
+
+    @keyframes drawLine {
+      to { width: 100%; }
+    }
+
+    @keyframes glow {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 100% 50%; }
+    }
+
+    /* Efek menang */
+    .winner {
+      animation: boardFlash 1s ease-in-out 2;
+    }
+
+    @keyframes boardFlash {
+      0%, 100% { background-color: #111; }
+      50% { background-color: #333; }
+    }
+
+    /* Confetti */
+    .confetti {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background-color: red;
+      top: 0;
+      animation: fall 3s linear forwards;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>❌ Tic Tac Toe ⭕ (3 Bidak)</h1>
+  <div id="board"></div>
+  <p id="status">Giliran Pemain X</p>
+  <button onclick="resetGame()">🔄 Reset</button>
+
+  <script>
+    const board = document.getElementById("board");
+    const statusText = document.getElementById("status");
+
+    let currentPlayer = "X";
+    let gameActive = true;
+    let cells = ["", "", "", "", "", "", "", "", ""];
+    let moveCounts = { X: 0, O: 0 };
+    let placedIndexes = { X: [], O: [] };
+
+    // buat papan 3x3
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.setAttribute("data-index", i);
+      cell.addEventListener("click", cellClicked);
+      board.appendChild(cell);
+    }
+
+    function cellClicked(e) {
+      const index = e.target.getAttribute("data-index");
+
+      if (!gameActive) return;
+
+      if (cells[index] === "") {
+        if (moveCounts[currentPlayer] < 3) {
+          placeMark(index);
+        } else {
+          statusText.innerText = `⚠️ Pemain ${currentPlayer} sudah 3 bidak, pilih bidak lama untuk dipindah.`;
+        }
+      } 
+      else if (cells[index] === currentPlayer) {
+        removeMark(index);
+      }
+    }
+
+    function placeMark(index) {
+      cells[index] = currentPlayer;
+      moveCounts[currentPlayer]++;
+      placedIndexes[currentPlayer].push(index);
+
+      const cell = document.querySelector(`[data-index='${index}']`);
+      cell.innerText = currentPlayer;
+      cell.classList.add("mark");
+
+      if (checkWinner()) {
+        statusText.innerText = `🏆 Pemain ${currentPlayer} Menang!`;
+        gameActive = false;
+        board.classList.add("winner");
+        launchConfetti();
+        return;
+      }
+
+      currentPlayer = currentPlayer === "X" ? "O" : "X";
+      statusText.innerText = `Giliran Pemain ${currentPlayer}`;
+    }
+
+    function removeMark(index) {
+      cells[index] = "";
+      moveCounts[currentPlayer]--;
+      placedIndexes[currentPlayer] = placedIndexes[currentPlayer].filter(i => i !== parseInt(index));
+
+      const cell = document.querySelector(`[data-index='${index}']`);
+      cell.innerText = "";
+      statusText.innerText = `Pemain ${currentPlayer}, pilih kotak baru untuk pindahkan.`;
+    }
+
+    function checkWinner() {
+      const winPatterns = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+      ];
+
+      for (let pattern of winPatterns) {
+        if (pattern.every(i => cells[i] === currentPlayer)) {
+          drawWinLine(pattern);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function drawWinLine(pattern) {
+      const line = document.createElement("div");
+      line.classList.add("win-line");
+
+      const firstCell = document.querySelector(`[data-index='${pattern[0]}']`);
+      const lastCell = document.querySelector(`[data-index='${pattern[2]}']`);
+
+      const boardRect = board.getBoundingClientRect();
+      const startRect = firstCell.getBoundingClientRect();
+      const endRect = lastCell.getBoundingClientRect();
+
+      const x1 = startRect.left + startRect.width / 2 - boardRect.left;
+      const y1 = startRect.top + startRect.height / 2 - boardRect.top;
+      const x2 = endRect.left + endRect.width / 2 - boardRect.left;
+      const y2 = endRect.top + endRect.height / 2 - boardRect.top;
+
+      const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+      const angle = Math.atan2(y2-y1, x2-x1) * 180 / Math.PI;
+
+      line.style.left = x1 + "px";
+      line.style.top = y1 + "px";
+      line.style.width = length + "px";
+      line.style.transform = `rotate(${angle}deg)`;
+
+      board.appendChild(line);
+    }
+
+    function launchConfetti() {
+      for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement("div");
+        confetti.classList.add("confetti");
+        confetti.style.left = Math.random() * window.innerWidth + "px";
+        confetti.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
+        confetti.style.animationDuration = (2 + Math.random()*3) + "s";
+        document.body.appendChild(confetti);
+
+        setTimeout(() => confetti.remove(), 4000);
+      }
+    }
+
+    function resetGame() {
+      cells.fill("");
+      currentPlayer = "X";
+      gameActive = true;
+      moveCounts = { X: 0, O: 0 };
+      placedIndexes = { X: [], O: [] };
+      statusText.innerText = "Giliran Pemain X";
+      document.querySelectorAll(".cell").forEach(cell => {
+        cell.innerText = "";
+        cell.classList.remove("mark");
+      });
+      document.querySelectorAll(".win-line").forEach(line => line.remove());
+      board.classList.remove("winner");
+    }
+  </script>
+</body>
+</html>
